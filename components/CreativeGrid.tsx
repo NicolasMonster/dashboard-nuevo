@@ -64,7 +64,7 @@ function AIAnalysisModal({ item, campaignName, onClose }: AIAnalysisModalProps) 
   const [result, setResult] = useState<AIAnalysisResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const displayName = item.creative.title ?? item.creative.name ?? item.ad.name
+  const displayName = item.ad.name
 
   useEffect(() => {
     async function run() {
@@ -272,7 +272,8 @@ export default function CreativeGrid({
           const isSelected = ad.id === selectedCreativeId
           const isVideo = creative.object_type === 'VIDEO' || !!creative.video_id
           const thumbnailUrl = creative.thumbnail_url ?? creative.image_url
-          const displayName = creative.title ?? creative.name ?? ad.name
+          // ad.name is always the human-readable name; creative.name has long UUIDs
+          const displayName = ad.name
 
           return (
             <button
@@ -338,7 +339,7 @@ export default function CreativeGrid({
               {/* Info */}
               <div className="p-3 space-y-2.5">
                 {/* Name */}
-                <p className="text-xs font-semibold text-slate-200 truncate leading-tight">
+                <p className="text-xs font-semibold text-slate-100 line-clamp-2 leading-snug">
                   {displayName}
                 </p>
 

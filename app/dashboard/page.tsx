@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, BarChart2, Zap, Layers } from 'lucide-react'
 import { subDays, format } from 'date-fns'
 import CampaignSidebar from '@/components/CampaignSidebar'
@@ -12,6 +12,8 @@ import DateRangePicker from '@/components/DateRangePicker'
 import ConversionFunnel from '@/components/ConversionFunnel'
 import { cn } from '@/lib/utils'
 import type { Campaign, CreativeWithMetrics, DateFilter, DashboardData, FunnelData } from '@/lib/types'
+
+type CreativeSort = 'spend' | 'roas' | 'revenue'
 
 function defaultFilter(): DateFilter {
   const today = new Date()
@@ -34,6 +36,16 @@ export default function DashboardPage() {
 
   const [creatives, setCreatives] = useState<CreativeWithMetrics[]>([])
   const [loadingCreatives, setLoadingCreatives] = useState(false)
+
+  const [creativeSort, setCreativeSort] = useState<CreativeSort>('spend')
+
+  const sortedCreatives = useMemo(() => {
+    return [...creatives].sort((a, b) => {
+      if (creativeSort === 'roas') return b.computedMetrics.roas - a.computedMetrics.roas
+      if (creativeSort === 'revenue') return b.computedMetrics.revenue - a.computedMetrics.revenue
+      return b.computedMetrics.spend - a.computedMetrics.spend
+    })
+  }, [creatives, creativeSort])
 
   const [selectedCreative, setSelectedCreative] = useState<CreativeWithMetrics | null>(null)
 
@@ -228,21 +240,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Conversion Funnel */}
-              <div className="bg-surface-900 border border-slate-800 rounded-xl p-5">
-                <h3 className="text-sm font-semibold text-slate-300 mb-5 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-emerald-400 rounded-full" />
-                  Funnel de Conversión
-                  <span className="text-xs text-slate-500 font-normal ml-1">
-                    — cuenta completa
-                  </span>
-                </h3>
-                <ConversionFunnel
-                  data={dashboardData?.funnelData ?? emptyFunnel}
-                  loading={loadingDashboard}
-                />
-              </div>
-
               {/* Creatives */}
               <div className="bg-surface-900 border border-slate-800 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-5">
@@ -255,12 +252,25 @@ export default function DashboardPage() {
                       </span>
                     )}
                   </h3>
-                  {loadingCreatives && (
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <RefreshCw className="w-3 h-3 animate-spin" />
-                      Cargando creativos...
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {loadingCreatives && (
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        Cargando...
+                      </div>
+                    )}
+                    {creatives.length > 0 && (
+                      <select
+                        value={creativeSort}
+                        onChange={(e) => setCreativeSort(e.target.value as CreativeSort)}
+                        className="text-xs bg-surface-800 border border-slate-700 text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none focus:border-brand-500 cursor-pointer"
+                      >
+                        <option value="spend">Mayor Gasto</option>
+                        <option value="roas">Mayor ROAS</option>
+                        <option value="revenue">Mayor Facturación</option>
+                      </select>
+                    )}
+                  </div>
                 </div>
 
                 {!selectedCampaignId ? (
@@ -270,13 +280,28 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <CreativeGrid
-                    creatives={creatives}
+                    creatives={sortedCreatives}
                     selectedCreativeId={selectedCreative?.ad.id ?? null}
                     onSelectCreative={setSelectedCreative}
                     campaignName={selectedCampaign?.name ?? ''}
                     loading={loadingCreatives}
                   />
                 )}
+              </div>
+
+              {/* Conversion Funnel — debajo de creativos */}
+              <div className="bg-surface-900 border border-slate-800 rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-slate-300 mb-5 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full" />
+                  Funnel de Conversión
+                  <span className="text-xs text-slate-500 font-normal ml-1">
+                    — cuenta completa
+                  </span>
+                </h3>
+                <ConversionFunnel
+                  data={dashboardData?.funnelData ?? emptyFunnel}
+                  loading={loadingDashboard}
+                />
               </div>
             </div>
           </div>

@@ -92,7 +92,10 @@ export async function getAdSets(campaignId: string, filter: DateFilter): Promise
   return data.data ?? []
 }
 
-// ─── Ads ─────────────────────────────────────────────────────────────────────
+// ─── Ads (con cache en memoria 5 min) ────────────────────────────────────────
+
+const adsCache = new Map<string, { ads: Ad[]; ts: number }>()
+const ADS_CACHE_TTL = 5 * 60 * 1000 // 5 minutos
 
 export async function getAds(campaignId: string | null, filter: DateFilter): Promise<Ad[]> {
   const accountId = process.env.META_AD_ACCOUNT_ID
@@ -102,37 +105,35 @@ export async function getAds(campaignId: string | null, filter: DateFilter): Pro
     'spend,impressions,clicks,ctr,cpc,cpm,purchase_roas,action_values,actions,' +
     'video_play_actions,video_p25_watched_actions,video_p100_watched_actions,date_start,date_stop'
   const tr = timeRange(filter)
+  const cacheKey = `${filter.startDate}_${filter.endDate}`
 
-  const params: Record<string, string> = {
-    fields:
+  // Usar cache si existe y no expiró
+  let allAds: Ad[]
+  const cached = adsCache.get(cacheKey)
+  if (cached && Date.now() - cached.ts < ADS_CACHE_TTL) {
+    console.log(`[meta-api] Cache hit — ${cached.ads.length} ads`)
+    allAds = cached.ads
+  } else {
+    const baseFields =
       `id,name,adset_id,campaign_id,status,` +
       `creative{id,name,thumbnail_url,video_id,image_url,body,title,call_to_action_type,object_type},` +
-      `insights.time_range(${tr}){${insightFields}}`,
-    limit: '200',
+      `insights.time_range(${tr}){${insightFields}}`
+
+    console.log(`[meta-api] Fetching ads de Meta API...`)
+    const data = await metaFetch<{ data: Ad[] }>(
+      `/act_${accountId.replace('act_', '')}/ads`,
+      { fields: baseFields, limit: '200' }
+    )
+    allAds = data.data ?? []
+    adsCache.set(cacheKey, { ads: allAds, ts: Date.now() })
+    console.log(`[meta-api] ${allAds.length} ads obtenidos y cacheados`)
   }
 
-  if (campaignId) {
-    params.filtering = JSON.stringify([{ field: 'campaign_id', operator: 'EQUAL', value: campaignId }])
-  }
+  if (!campaignId) return allAds
 
-  const data = await metaFetch<{ data: Ad[] }>(
-    `/act_${accountId.replace('act_', '')}/ads`,
-    params
-  )
-
-  const ads = data.data ?? []
-  console.log(`[meta-api] getAds — ${ads.length} ads (campaignId: ${campaignId ?? 'todos'})`)
-  if (ads.length > 0) {
-    const first = ads[0]
-    console.log('[meta-api] Primer ad — creative:', JSON.stringify(first.creative, null, 2))
-    console.log('[meta-api] Primer ad — insights:', JSON.stringify(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (first.insights as unknown as { data?: unknown[] } & any)?.data?.[0],
-      null, 2
-    ))
-  }
-
-  return ads
+  const filtered = allAds.filter((ad) => String(ad.campaign_id) === String(campaignId))
+  console.log(`[meta-api] Ads de campaña ${campaignId}: ${filtered.length}`)
+  return filtered.length > 0 ? filtered : allAds
 }
 
 // ─── Time Series ──────────────────────────────────────────────────────────────

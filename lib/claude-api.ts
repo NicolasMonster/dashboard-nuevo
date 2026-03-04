@@ -69,7 +69,7 @@ Recordá: respondé SOLO con el JSON, sin explicaciones adicionales.`
 
   const response = await client.chat.completions.create({
     model: 'gpt-5.2',
-    max_tokens: 1500,
+    max_completion_tokens: 1500,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
