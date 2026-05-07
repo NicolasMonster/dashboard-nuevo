@@ -57,7 +57,10 @@ export interface AdInsights {
   action_values?: { action_type: string; value: string }[]
   video_play_actions?: { action_type: string; value: string }[]
   video_p25_watched_actions?: { action_type: string; value: string }[]
+  video_p50_watched_actions?: { action_type: string; value: string }[]
+  video_p75_watched_actions?: { action_type: string; value: string }[]
   video_p100_watched_actions?: { action_type: string; value: string }[]
+  video_avg_time_watched_actions?: { action_type: string; value: string }[]
   date_start: string
   date_stop: string
 }
@@ -99,6 +102,7 @@ export interface CreativeWithMetrics {
     revenue: number
     hookRate: number
     retentionRate: number
+    avgTimeSeconds?: number
     // legacy video fields
     playRate?: number
     avgWatchTime?: number

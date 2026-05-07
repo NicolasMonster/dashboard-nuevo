@@ -188,8 +188,8 @@ export default function VideoRetentionChart({ item }: Props) {
     ? Math.round(duration * 0.25 * ((1 + p100 / plays) / 2 + p25 / plays + p50 / plays + p75 / plays))
     : 0
   const avgWatchSec =
-    computedMetrics.avgTimeSeconds > 0
-      ? computedMetrics.avgTimeSeconds
+    (computedMetrics.avgTimeSeconds ?? 0) > 0
+      ? computedMetrics.avgTimeSeconds!
       : avgWatchMs > 0
         ? (avgWatchMs > 300 ? Math.round(avgWatchMs / 1000) : Math.round(avgWatchMs))
         : estimatedAvgSec > 0
